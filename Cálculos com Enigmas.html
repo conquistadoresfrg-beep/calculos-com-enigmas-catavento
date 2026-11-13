@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cálculos com Enigmas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Gochi+Hand&display=swap" rel="stylesheet">
+<style>
+:root{
+  --frame:#97C9C3; --card:#FFFFFF; --ink:#1E2A30; --soft:#4E6B7A; --muted:#7A8F98;
+  --line:#E3EEEC; --chip:#F2F8F7;
+  --blue:#0A93B0; --red:#F2140F; --green:#4CD80E; --yellow:#FDD02E; --purple:#6B2B7C; --orange:#FF7F2A;
+  --ok:#2EAE4F; --bad:#E5483B;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --frame:#1E3B39; --card:#13211F; --ink:#EEF5F4; --soft:#A8C6C2; --muted:#7F9B97;
+    --line:#26403D; --chip:#1A2D2B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --frame:#1E3B39; --card:#13211F; --ink:#EEF5F4; --soft:#A8C6C2; --muted:#7F9B97;
+  --line:#26403D; --chip:#1A2D2B; color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{
+  background:var(--frame); color:var(--ink);
+  font-family:"Fredoka", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible{outline:4px solid var(--blue);outline-offset:3px}
+
+.sheet{
+  position:relative; min-height:100%;
+  padding:14px;
+  display:flex;
+}
+.paper{
+  flex:1; background:var(--card); border-radius:28px;
+  max-width:860px; margin:0 auto; width:100%;
+  padding:22px 20px 18px; position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+
+.fs-btn{
+  position:absolute; top:14px; right:14px; z-index:5;
+  width:46px; height:46px; border-radius:14px; border:2px solid var(--line);
+  background:var(--card); color:var(--soft); display:grid; place-items:center;
+}
+.fs-btn svg{width:22px;height:22px}
+.fs-btn[hidden]{display:none}
+
+.screen{display:none; flex:1; flex-direction:column}
+.screen.on{display:flex}
+
+/* ---------- Home ---------- */
+.title{
+  text-align:center; margin:14px 0 0; line-height:1;
+}
+.title .big{
+  display:block; font-weight:700; color:var(--soft);
+  font-size:clamp(2.6rem, 9vw, 4.6rem); letter-spacing:.01em;
+}
+.title .hand{
+  display:block; font-family:"Gochi Hand", "Comic Sans MS", cursive;
+  font-weight:400; color:var(--ink); font-size:clamp(1.9rem, 6.5vw, 3rem);
+  margin-top:2px;
+}
+.demo{
+  margin:26px auto 6px; display:flex; align-items:center; justify-content:center;
+  gap:clamp(8px,2.5vw,18px); min-height:120px;
+}
+.demo .sh{width:clamp(70px,18vw,104px);height:clamp(70px,18vw,104px)}
+.demo .op, .demo .eq{font-size:clamp(2.2rem,7vw,3.4rem);font-weight:700;color:var(--soft)}
+.demo .ans{
+  min-width:clamp(66px,16vw,96px); height:clamp(66px,16vw,96px);
+  border-radius:22px; border:4px dashed var(--line);
+  display:grid; place-items:center; font-weight:700; color:var(--ink);
+  font-size:clamp(2rem,6vw,3rem); padding:0 10px;
+}
+.demo .ans.pop{border-style:solid;border-color:var(--green);animation:pop .4s ease}
+.demo-cap{text-align:center;color:var(--muted);font-size:1rem;min-height:1.4em;margin:0}
+@keyframes pop{0%{transform:scale(.7)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+
+.lead{
+  text-align:center; font-size:clamp(1.1rem,3.6vw,1.35rem); color:var(--ink);
+  max-width:34ch; margin:22px auto 20px; line-height:1.35; font-weight:500;
+}
+.ops{display:grid; gap:14px; max-width:520px; width:100%; margin:0 auto}
+.op-btn{
+  display:flex; align-items:center; gap:16px; border:none;
+  border-radius:22px; padding:16px 22px; font-size:clamp(1.4rem,4.6vw,1.8rem);
+  font-weight:700; color:#fff; text-align:left;
+  box-shadow:0 6px 0 rgba(0,0,0,.18); transition:transform .12s, box-shadow .12s;
+}
+.op-btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.op-btn .sym{
+  width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.25);
+  display:grid;place-items:center;font-size:2.2rem;line-height:1;flex:none;
+}
+.op-btn.add{background:var(--blue)}
+.op-btn.sub{background:var(--orange)}
+.op-btn.mul{background:var(--purple)}
+
+.handle{
+  text-align:center; margin-top:auto; padding-top:22px;
+  font-weight:600; color:var(--soft); font-size:1rem;
+}
+.handle a{color:inherit;text-decoration:none}
+
+/* ---------- Game ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding-right:56px}
+.ghost{
+  border:2px solid var(--line); background:var(--chip); color:var(--ink);
+  border-radius:14px; padding:9px 14px; font-size:1rem; font-weight:600;
+}
+.round-info{font-weight:600;color:var(--soft);font-size:1.05rem}
+.score-pill{
+  margin-left:auto; background:var(--chip); border-radius:999px; padding:7px 14px;
+  font-weight:700; color:var(--ok); font-size:1.05rem; white-space:nowrap;
+}
+.bar{height:12px;border-radius:999px;background:var(--line);margin:14px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--green);border-radius:inherit;transition:width .35s}
+.op-tag{color:var(--muted);font-size:1rem;margin:4px 0 0;text-align:center}
+
+.puzzle{
+  display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;
+  gap:clamp(6px,2.4vw,20px); margin:26px 0 10px;
+}
+.puzzle .sh{width:clamp(84px,24vw,140px);height:clamp(84px,24vw,140px)}
+.puzzle .sym{font-size:clamp(2.4rem,8vw,4rem);font-weight:700;color:var(--soft)}
+.puzzle .q{
+  min-width:clamp(74px,20vw,120px);height:clamp(74px,20vw,120px);border-radius:24px;
+  border:4px dashed var(--line);display:grid;place-items:center;
+  font-size:clamp(2.2rem,7vw,3.6rem);font-weight:700;color:var(--muted);padding:0 8px;
+}
+.puzzle .q.solved{border-style:solid;color:var(--ink)}
+.puzzle .q.solved.ok{border-color:var(--ok)}
+.puzzle .q.solved.bad{border-color:var(--bad)}
+
+.prompt{text-align:center;font-size:1.15rem;font-weight:500;margin:8px 0 16px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:560px;width:100%;margin:0 auto}
+.choice{
+  border:3px solid var(--line); background:var(--chip); color:var(--ink);
+  border-radius:22px; padding:18px 6px; font-size:clamp(1.8rem,6vw,2.6rem); font-weight:700;
+  box-shadow:0 5px 0 var(--line); transition:transform .1s, box-shadow .1s, background .2s;
+}
+.choice:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 var(--line)}
+.choice:disabled{cursor:default}
+.choice.ok{background:var(--ok);border-color:var(--ok);color:#fff;box-shadow:0 5px 0 #1f8a3b}
+.choice.bad{background:var(--bad);border-color:var(--bad);color:#fff;box-shadow:0 5px 0 #b3342a;animation:shake .35s}
+.choice.dim{opacity:.45}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+
+.feedback{min-height:3.4em;text-align:center;margin:18px 0 4px;font-size:1.25rem;font-weight:600}
+.feedback .math{display:block;color:var(--soft);font-size:1.05rem;font-weight:500;margin-top:2px}
+.feedback.ok{color:var(--ok)} .feedback.bad{color:var(--bad)}
+.next{
+  display:block;margin:6px auto 0;border:none;border-radius:20px;background:var(--blue);color:#fff;
+  font-size:1.35rem;font-weight:700;padding:14px 36px;box-shadow:0 5px 0 #06708a;visibility:hidden;
+}
+.next.show{visibility:visible}
+.next:active{transform:translateY(3px);box-shadow:0 2px 0 #06708a}
+
+.key-toggle{margin:18px auto 0;display:block}
+.key{
+  display:none;margin-top:14px;border-top:2px dashed var(--line);padding-top:14px;
+}
+.key.open{display:block}
+.key-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.key-item{display:flex;align-items:center;gap:6px;background:var(--chip);border-radius:14px;padding:6px 8px}
+.key-item .sh{width:40px;height:40px;flex:none}
+.key-item b{font-size:1.25rem}
+
+/* ---------- End ---------- */
+#end{align-items:center;justify-content:center;text-align:center;position:relative}
+.trophy{font-size:4.6rem;line-height:1;margin-top:20px;animation:pop .6s ease}
+.end-title{font-size:clamp(2rem,7vw,3rem);font-weight:700;margin:10px 0 0;color:var(--ink)}
+.end-score{font-size:clamp(3.4rem,13vw,6rem);font-weight:700;color:var(--blue);line-height:1;margin:16px 0 4px}
+.end-sub{font-size:1.2rem;color:var(--soft);margin:0 0 6px}
+.stars{display:flex;justify-content:center;gap:8px;margin:12px 0 4px}
+.stars .sh{width:56px;height:56px;transition:transform .4s}
+.stars .off{opacity:.18;filter:grayscale(1)}
+.end-msg{font-family:"Gochi Hand","Comic Sans MS",cursive;font-size:clamp(1.6rem,5vw,2.2rem);color:var(--ink);margin:14px auto 22px;max-width:24ch;line-height:1.15}
+.end-actions{display:grid;gap:12px;width:100%;max-width:420px}
+.end-actions .op-btn{justify-content:center}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:20}
+
+@media (max-width:420px){
+  .paper{padding:18px 14px 14px;border-radius:24px}
+  .sheet{padding:10px}
+  .choices{gap:8px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+<div class="sheet">
+  <main class="paper">
+    <button class="fs-btn" id="fsBtn" aria-label="Tela cheia" title="Tela cheia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+
+    <!-- HOME -->
+    <section class="screen on" id="home" aria-labelledby="homeTitle">
+      <h1 class="title" id="homeTitle"><span class="big">Cálculos</span><span class="hand">com enigmas</span></h1>
+      <div class="demo" id="demo" aria-hidden="true"></div>
+      <p class="demo-cap" id="demoCap"></p>
+      <p class="lead">Escolha uma das operações e calcule e resolva conforme os enigmas.</p>
+      <div class="ops">
+        <button class="op-btn add" data-op="add"><span class="sym">+</span>Adição</button>
+        <button class="op-btn sub" data-op="sub"><span class="sym">−</span>Subtração</button>
+        <button class="op-btn mul" data-op="mul"><span class="sym">×</span>Multiplicação</button>
+      </div>
+      <p class="handle"><a href="https://instagram.com/cataventoep" target="_blank" rel="noopener">@cataventoep</a></p>
+    </section>
+
+    <!-- GAME -->
+    <section class="screen" id="game" aria-live="polite">
+      <div class="topbar">
+        <button class="ghost" id="homeBtn">Início</button>
+        <span class="round-info" id="roundInfo">Cálculo 1 de 20</span>
+        <span class="score-pill" id="scorePill">✓ 0</span>
+      </div>
+      <div class="bar"><i id="barFill"></i></div>
+      <p class="op-tag" id="opTag"></p>
+      <div class="puzzle" id="puzzle"></div>
+      <p class="prompt">Qual é o resultado?</p>
+      <div class="choices" id="choices"></div>
+      <div class="feedback" id="feedback"></div>
+      <button class="next" id="nextBtn">Próximo cálculo</button>
+      <button class="ghost key-toggle" id="keyBtn" aria-expanded="false">Ver a chave do enigma</button>
+      <div class="key" id="key"><div class="key-grid" id="keyGrid"></div></div>
+      <p class="handle">@cataventoep</p>
+    </section>
+
+    <!-- END -->
+    <section class="screen" id="end">
+      <div class="trophy" aria-hidden="true">🏆</div>
+      <h2 class="end-title" id="endTitle">Parabéns!</h2>
+      <div class="end-score" id="endScore">0/20</div>
+      <p class="end-sub" id="endSub"></p>
+      <div class="stars" id="stars" aria-hidden="true"></div>
+      <p class="end-msg" id="endMsg"></p>
+      <div class="end-actions">
+        <button class="op-btn add" id="againBtn"><span class="sym">↻</span>Jogar de novo</button>
+        <button class="ghost" id="chooseBtn" style="padding:14px;font-size:1.15rem">Escolher outra operação</button>
+      </div>
+      <p class="handle">@cataventoep</p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  const COLORS = {blue:'var(--blue)',red:'var(--red)',green:'var(--green)',yellow:'var(--yellow)',purple:'var(--purple)',orange:'var(--orange)'};
+  const COLOR_NAME = {
+    blue:['azul','azul'], red:['vermelho','vermelha'], green:['verde','verde'],
+    yellow:['amarelo','amarela'], purple:['roxo','roxa'], orange:['laranja','laranja']
+  };
+  const SHAPE_NAME = {
+    rect:['retângulo',0], square:['quadrado',0], circle:['círculo',0], triUp:['triângulo',0],
+    triDown:['triângulo virado para baixo',0], arrowR:['seta para a direita',1], arrowL:['seta para a esquerda',1],
+    heart:['coração',0], star:['estrela',1], cloud:['nuvem',1]
+  };
+  // Mesma chave da imagem
+  const KEY = [
+    ['rect','blue'],['circle','red'],['triDown','green'],['arrowR','yellow'],['heart','purple'],
+    ['star','orange'],['cloud','blue'],['triUp','red'],['arrowL','green'],['triUp','yellow'],
+    ['square','purple'],['arrowR','orange'],['heart','yellow'],['cloud','green'],['triDown','orange'],
+    ['star','green'],['circle','purple'],['heart','blue'],['arrowL','red'],['circle','green'],
+    ['star','yellow'],['triDown','blue'],['rect','green'],['square','orange'],['arrowR','purple'],
+    ['cloud','red']
+  ];
+
+  function starPts(){
+    const p=[];for(let i=0;i<10;i++){const r=i%2?19:47;const a=-Math.PI/2+i*Math.PI/5;p.push((50+r*Math.cos(a)).toFixed(1)+','+(54+r*Math.sin(a)).toFixed(1));}
+    return p.join(' ');
+  }
+  const STAR = starPts();
+  function shapeInner(kind){
+    switch(kind){
+      case 'rect': return '<rect x="4" y="29" width="92" height="42" rx="2"/>';
+      case 'square': return '<rect x="14" y="14" width="72" height="72" rx="2"/>';
+      case 'circle': return '<circle cx="50" cy="50" r="42"/>';
+      case 'triUp': return '<polygon points="50,8 95,90 5,90"/>';
+      case 'triDown': return '<polygon points="5,10 95,10 50,92"/>';
+      case 'arrowR': return '<polygon points="4,32 52,32 52,6 96,50 52,94 52,68 4,68"/>';
+      case 'arrowL': return '<polygon points="96,32 48,32 48,6 4,50 48,94 48,68 96,68"/>';
+      case 'heart': return '<path d="M50 90C22 68 4 52 4 31C4 16 15 6 28 6C38 6 46 12 50 20C54 12 62 6 72 6C85 6 96 16 96 31C96 52 78 68 50 90Z"/>';
+      case 'star': return '<polygon points="'+STAR+'"/>';
+      case 'cloud': return '<circle cx="30" cy="52" r="19"/><circle cx="52" cy="40" r="23"/><circle cx="73" cy="50" r="19"/><circle cx="17" cy="64" r="13"/><circle cx="85" cy="63" r="12"/><rect x="16" y="54" width="70" height="22" rx="11"/>';
+    }
+  }
+  function nameOf(n){
+    const [k,c]=KEY[n]; const [nm,fem]=SHAPE_NAME[k]; return nm+' '+COLOR_NAME[c][fem];
+  }
+  function shapeSVG(n, extra){
+    const [k,c]=KEY[n];
+    return '<svg class="sh '+(extra||'')+'" viewBox="0 0 100 100" role="img" aria-label="'+nameOf(n)+'"><g fill="'+COLORS[c]+'">'+shapeInner(k)+'</g></svg>';
+  }
+
+  const OPS = {
+    add:{sym:'+',name:'Adição',calc:(a,b)=>a+b},
+    sub:{sym:'−',name:'Subtração',calc:(a,b)=>a-b},
+    mul:{sym:'×',name:'Multiplicação',calc:(a,b)=>a*b}
+  };
+  const ROUNDS = 20;
+  const rnd = n => Math.floor(Math.random()*n);
+  const shuffle = arr => {for(let i=arr.length-1;i>0;i--){const j=rnd(i+1);[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;};
+
+  function makeQuestions(op){
+    const used=new Set(), list=[];
+    let guard=0;
+    while(list.length<ROUNDS && guard++<5000){
+      let a=rnd(26), b=rnd(26);
+      if(a===0 && b===0) continue;
+      if(op==='sub' && b>a) [a,b]=[b,a];
+      const key=a+'|'+b; if(used.has(key)) continue;
+      // evita repetir o mesmo par invertido na adição e multiplicação
+      if(op!=='sub' && used.has(b+'|'+a)) continue;
+      used.add(key);
+      list.push({a,b,ans:OPS[op].calc(a,b)});
+    }
+    return list;
+  }
+  function makeChoices(q, op){
+    const r=q.ans, c=new Set();
+    const pool=[r+1,r-1,r+2,r-2,r+10,r-10,r+3,r-3];
+    if(op==='mul'){pool.push(q.a*(q.b+1), q.a*Math.max(q.b-1,0), (q.a+1)*q.b, q.a+q.b);}
+    if(op==='add'){pool.push(Math.abs(q.a-q.b));}
+    if(op==='sub'){pool.push(q.a+q.b);}
+    if(r>=10){const s=String(r).split('').reverse().join('');pool.push(parseInt(s,10));}
+    shuffle(pool).forEach(v=>{ if(c.size<2 && v>=0 && v!==r) c.add(v); });
+    while(c.size<2){const v=r+rnd(9)+1; if(v!==r) c.add(v);}
+    return shuffle([r,...c]);
+  }
+
+  // ---------- Estado ----------
+  const $=id=>document.getElementById(id);
+  let state={op:'add',qs:[],i:0,score:0,locked:false};
+
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+    window.scrollTo(0,0);
+  }
+
+  function start(op){
+    stopConfetti();
+    state={op,qs:makeQuestions(op),i:0,score:0,locked:false};
+    $('opTag').textContent=OPS[op].name;
+    show('game'); render();
+  }
+
+  function render(){
+    const q=state.qs[state.i], op=OPS[state.op];
+    state.locked=false;
+    $('roundInfo').textContent='Cálculo '+(state.i+1)+' de '+ROUNDS;
+    $('scorePill').textContent='✓ '+state.score;
+    $('barFill').style.width=(state.i/ROUNDS*100)+'%';
+    $('puzzle').innerHTML=shapeSVG(q.a)+'<span class="sym">'+op.sym+'</span>'+shapeSVG(q.b)+'<span class="sym">=</span><span class="q" id="qBox">?</span>';
+    const ch=makeChoices(q,state.op);
+    $('choices').innerHTML='';
+    ch.forEach(v=>{
+      const b=document.createElement('button');
+      b.className='choice'; b.textContent=v; b.dataset.v=v;
+      b.addEventListener('click',()=>answer(b,v));
+      $('choices').appendChild(b);
+    });
+    $('feedback').className='feedback'; $('feedback').innerHTML='';
+    $('nextBtn').classList.remove('show');
+    $('nextBtn').textContent= state.i===ROUNDS-1 ? 'Ver meu resultado' : 'Próximo cálculo';
+  }
+
+  const HITS=['Isso!','Muito bem!','Acertou!','Mandou bem!','Perfeito!','Show!'];
+  function answer(btn,v){
+    if(state.locked) return; state.locked=true;
+    const q=state.qs[state.i], op=OPS[state.op];
+    const right = v===q.ans;
+    if(right) state.score++;
+    document.querySelectorAll('.choice').forEach(b=>{
+      b.disabled=true;
+      if(+b.dataset.v===q.ans) b.classList.add('ok');
+      else if(b===btn) b.classList.add('bad');
+      else b.classList.add('dim');
+    });
+    const box=$('qBox'); box.textContent=q.ans; box.classList.add('solved',right?'ok':'bad');
+    $('feedback').className='feedback '+(right?'ok':'bad');
+    $('feedback').innerHTML=(right?HITS[rnd(HITS.length)]:'Quase! A resposta certa é '+q.ans+'.')+
+      '<span class="math">'+q.a+' '+op.sym+' '+q.b+' = '+q.ans+'</span>';
+    $('scorePill').textContent='✓ '+state.score;
+    $('barFill').style.width=((state.i+1)/ROUNDS*100)+'%';
+    $('nextBtn').classList.add('show');
+    $('nextBtn').focus({preventScroll:true});
+  }
+
+  function next(){
+    if(state.i<ROUNDS-1){state.i++; render();}
+    else finish();
+  }
+
+  function finish(){
+    const s=state.score, pct=s/ROUNDS;
+    $('endScore').textContent=s+'/'+ROUNDS;
+    $('endSub').textContent='Você acertou '+s+' de '+ROUNDS+' cálculos de '+OPS[state.op].name.toLowerCase()+'!';
+    let title,msg,stars;
+    if(s===ROUNDS){title='Gabaritou!';msg='Você desvendou todos os enigmas. Que mente brilhante!';stars=3;}
+    else if(pct>=.75){title='Parabéns!';msg='Que vitória! Você é fera nos enigmas!';stars=3;}
+    else if(pct>=.5){title='Muito bem!';msg='Mandou bem! Mais uma rodada e você chega lá no topo!';stars=2;}
+    else {title='Boa tentativa!';msg='Cada cálculo é um treino. Vamos jogar de novo?';stars=1;}
+    $('endTitle').textContent=title; $('endMsg').textContent=msg;
+    $('stars').innerHTML=[20,5,15].map((n,i)=>shapeSVG(n,i<stars?'':'off')).join('');
+    show('end');
+    startConfetti(s===ROUNDS?260:pct>=.5?180:90);
+  }
+
+  // ---------- Demo da tela inicial ----------
+  let demoTimer=null;
+  function demoStep(){
+    const opsK=['add','sub','mul']; const opk=opsK[rnd(3)];
+    let a=rnd(26), b=rnd(opk==='mul'?11:26);
+    if(opk==='sub' && b>a)[a,b]=[b,a];
+    const op=OPS[opk], r=op.calc(a,b);
+    $('demo').innerHTML=shapeSVG(a)+'<span class="op">'+op.sym+'</span>'+shapeSVG(b)+'<span class="eq">=</span><span class="ans" id="demoAns">?</span>';
+    $('demoCap').textContent='';
+    setTimeout(()=>{
+      const el=$('demoAns'); if(!el) return;
+      el.textContent=r; el.classList.add('pop');
+      $('demoCap').textContent=a+' '+op.sym+' '+b+' = '+r;
+    },1600);
+  }
+  function startDemo(){ demoStep(); clearInterval(demoTimer); demoTimer=setInterval(demoStep,3600); }
+
+  // ---------- Chave ----------
+  $('keyGrid').innerHTML=KEY.map((_,n)=>'<div class="key-item">'+shapeSVG(n)+'<b>'+n+'</b></div>').join('');
+  $('keyBtn').addEventListener('click',()=>{
+    const open=$('key').classList.toggle('open');
+    $('keyBtn').setAttribute('aria-expanded',open);
+    $('keyBtn').textContent=open?'Esconder a chave do enigma':'Ver a chave do enigma';
+  });
+
+  // ---------- Botões ----------
+  document.querySelectorAll('[data-op]').forEach(b=>b.addEventListener('click',()=>start(b.dataset.op)));
+  $('nextBtn').addEventListener('click',next);
+  $('homeBtn').addEventListener('click',()=>{show('home');});
+  $('againBtn').addEventListener('click',()=>start(state.op));
+  $('chooseBtn').addEventListener('click',()=>{stopConfetti();show('home');});
+
+  // ---------- Tela cheia ----------
+  const fsBtn=$('fsBtn');
+  const de=document.documentElement;
+  const canFS = !!(de.requestFullscreen||de.webkitRequestFullscreen);
+  if(!canFS) fsBtn.hidden=true;
+  fsBtn.addEventListener('click',async()=>{
+    try{
+      const isFS=document.fullscreenElement||document.webkitFullscreenElement;
+      if(isFS){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+      else { await (de.requestFullscreen||de.webkitRequestFullscreen).call(de); }
+    }catch(e){ fsBtn.title='Tela cheia não disponível neste navegador'; }
+  });
+
+  // ---------- Confete ----------
+  const cv=$('confetti'), cx=cv.getContext('2d');
+  let parts=[], raf=null;
+  const CONF=['#0A93B0','#F2140F','#4CD80E','#FDD02E','#6B2B7C','#FF7F2A'];
+  function resize(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio;cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);}
+  addEventListener('resize',resize); resize();
+  function startConfetti(n){
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    parts=[];
+    for(let i=0;i<n;i++) parts.push({
+      x:Math.random()*innerWidth, y:-20-Math.random()*innerHeight*.8,
+      vx:(Math.random()-.5)*2.4, vy:2+Math.random()*3.5, s:6+Math.random()*8,
+      r:Math.random()*6, vr:(Math.random()-.5)*.25, c:CONF[rnd(6)], t:rnd(3)
+    });
+    cancelAnimationFrame(raf); tick();
+  }
+  function tick(){
+    cx.clearRect(0,0,innerWidth,innerHeight);
+    let alive=0;
+    parts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.r+=p.vr; p.vy+=.02;
+      if(p.y<innerHeight+30) alive++;
+      cx.save(); cx.translate(p.x,p.y); cx.rotate(p.r); cx.fillStyle=p.c;
+      if(p.t===0) cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);
+      else if(p.t===1){cx.beginPath();cx.arc(0,0,p.s/2.4,0,7);cx.fill();}
+      else {cx.beginPath();cx.moveTo(0,-p.s/2);cx.lineTo(p.s/2,p.s/2);cx.lineTo(-p.s/2,p.s/2);cx.fill();}
+      cx.restore();
+    });
+    if(alive) raf=requestAnimationFrame(tick); else cx.clearRect(0,0,innerWidth,innerHeight);
+  }
+  function stopConfetti(){cancelAnimationFrame(raf);parts=[];cx.clearRect(0,0,innerWidth,innerHeight);}
+
+  startDemo();
+})();
+</script>
+</body>
+</html>
